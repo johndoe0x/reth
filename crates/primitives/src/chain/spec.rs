@@ -3144,7 +3144,7 @@ Post-merge hard forks (timestamp based):
         );
         let base_fee =
             genesis.next_block_base_fee(OP_SEPOLIA.base_fee_params(genesis.timestamp)).unwrap();
-        // <https://base-sepolia.blockscout.com/block/1>
+        // <https://optimism-sepolia.blockscout.com/block/1>
         assert_eq!(base_fee, 980000000);
     }
 }
