@@ -1570,10 +1570,11 @@ impl<TX: DbTx> TransactionsProvider for DatabaseProvider<TX> {
             |static_file, range, _| static_file.raw_transactions_by_tx_range(range),
             |range, _| {
                 self.cursor_collect_with_capacity(
-                    &mut self.tx.cursor_read::<tables::Transactions>()?,
-                    range.clone(),
+                    &mut self.tx.cursor_read::<RawTable<tables::Transactions>>()?,
+                    RawKey::new(range.start)..RawKey::new(range.end),
                     range_size_hint(&range).unwrap_or(0),
-                ).map(|a| a.into_iter().map(|b| RawValue::from(b)).collect())
+                    |_, v| Ok(v),
+                )
             },
             |_| true,
         )
