@@ -17,7 +17,6 @@ reth-primitives.workspace = true
 reth-db.workspace = true
 reth-trie.workspace = true
 reth-provider.workspace = true
-reth-tasks.workspace = true
 
 # alloy
 alloy-rlp.workspace = true
@@ -26,10 +25,15 @@ alloy-rlp.workspace = true
 tracing.workspace = true
 
 # misc
-tokio = { workspace = true, default-features = false, features = ["sync"] }
-rayon.workspace = true
 thiserror.workspace = true
 derive_more.workspace = true
+
+# `async` feature
+reth-tasks = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, default-features = false }
+
+# `parallel` feature
+rayon = { workspace = true, optional = true }
 
 [dev-dependencies]
 # reth
@@ -40,3 +44,9 @@ reth-trie = { workspace = true, features = ["test-utils"] }
 # misc
 rand.workspace = true
 tokio = { workspace = true, default-features = false, features = ["sync", "rt", "macros"] }
+
+[features]
+default = []
+
+async = ["reth-tasks", "tokio/sync"]
+parallel = ["rayon"]

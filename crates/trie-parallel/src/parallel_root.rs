@@ -1,4 +1,4 @@
-use crate::StorageRootTargets;
+use crate::storage_root_targets::StorageRootTargets;
 use alloy_rlp::{BufMut, Encodable};
 use rayon::prelude::*;
 use reth_db::database::Database;

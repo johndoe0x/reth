@@ -8,10 +8,12 @@
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 mod storage_root_targets;
-pub(crate) use storage_root_targets::StorageRootTargets;
+pub use storage_root_targets::StorageRootTargets;
 
-mod async_root;
-pub use async_root::*;
+#[cfg(feature = "async")]
+/// Implementation of async state root computation.
+pub mod async_root;
 
-mod parallel_root;
-pub use parallel_root::*;
+#[cfg(feature = "parallel")]
+/// Implementation of parallel state root computation.
+pub mod parallel_root;

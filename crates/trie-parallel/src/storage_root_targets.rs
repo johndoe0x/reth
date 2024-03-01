@@ -1,11 +1,11 @@
 use derive_more::{Deref, DerefMut};
-use rayon::iter::IntoParallelIterator;
 use reth_primitives::B256;
 use reth_trie::prefix_set::PrefixSet;
 use std::collections::HashMap;
 
+/// Target accounts with corresponding prefix sets for storage root calculation.
 #[derive(Deref, DerefMut, Debug)]
-pub(crate) struct StorageRootTargets(HashMap<B256, PrefixSet>);
+pub struct StorageRootTargets(HashMap<B256, PrefixSet>);
 
 impl StorageRootTargets {
     /// Create new storage root targets from updated post state accounts
@@ -13,7 +13,7 @@ impl StorageRootTargets {
     ///
     /// NOTE: Since updated accounts and prefix sets always overlap,
     /// it's important that iterator over storage prefix sets takes precedence.
-    pub(crate) fn new(
+    pub fn new(
         changed_accounts: impl IntoIterator<Item = B256>,
         storage_prefix_sets: impl IntoIterator<Item = (B256, PrefixSet)>,
     ) -> Self {
@@ -36,7 +36,8 @@ impl IntoIterator for StorageRootTargets {
     }
 }
 
-impl IntoParallelIterator for StorageRootTargets {
+#[cfg(feature = "parallel")]
+impl rayon::iter::IntoParallelIterator for StorageRootTargets {
     type Item = (B256, PrefixSet);
     type Iter = rayon::collections::hash_map::IntoIter<B256, PrefixSet>;
 
