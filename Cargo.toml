@@ -56,6 +56,7 @@ members = [
     "crates/tracing/",
     "crates/transaction-pool/",
     "crates/trie/",
+    "crates/trie-parallel/",
     "examples/",
     "examples/additional-rpc-namespace-in-cli/",
     "examples/beacon-api-sse/",

@@ -7027,6 +7027,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "reth-trie-parallel"
+version = "0.1.0-alpha.21"
+dependencies = [
+ "alloy-chains",
+ "alloy-rlp",
+ "auto_impl",
+ "criterion",
+ "derive_more",
+ "once_cell",
+ "proptest",
+ "rayon",
+ "reth-db",
+ "reth-interfaces",
+ "reth-primitives",
+ "reth-provider",
+ "reth-tasks",
+ "reth-trie",
+ "serde_json",
+ "similar-asserts",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "revm"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

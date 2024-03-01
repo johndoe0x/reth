@@ -1,8 +1,10 @@
 use crate::{BlockNumReader, DatabaseProviderFactory, DatabaseProviderRO, ProviderError};
 use reth_db::{cursor::DbCursorRO, database::Database, tables, transaction::DbTx};
-use reth_interfaces::provider::{ConsistentViewError, ProviderResult};
+use reth_interfaces::provider::ProviderResult;
 use reth_primitives::{GotExpected, B256};
 use std::marker::PhantomData;
+
+pub use reth_interfaces::provider::ConsistentViewError;
 
 /// A consistent view over state in the database.
 ///
