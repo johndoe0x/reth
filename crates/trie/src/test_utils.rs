@@ -9,10 +9,10 @@ pub use triehash;
 /// Compute the state root of a given set of accounts using [triehash::sec_trie_root].
 pub fn state_root<I, S>(accounts: I) -> B256
 where
-    I: Iterator<Item = (Address, (Account, S))>,
+    I: IntoIterator<Item = (Address, (Account, S))>,
     S: IntoIterator<Item = (B256, U256)>,
 {
-    let encoded_accounts = accounts.map(|(address, (account, storage))| {
+    let encoded_accounts = accounts.into_iter().map(|(address, (account, storage))| {
         let storage_root = storage_root(storage.into_iter());
         let mut out = Vec::new();
         TrieAccount::from((account, storage_root)).encode(&mut out);

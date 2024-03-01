@@ -200,3 +200,108 @@ pub enum AsyncStateRootError {
     #[error(transparent)]
     Provider(#[from] ProviderError),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::Rng;
+    use reth_primitives::{keccak256, Account, Address, StorageEntry, U256};
+    use reth_provider::{test_utils::create_test_provider_factory, HashingWriter};
+    use reth_tasks::TaskManager;
+    use reth_trie::{test_utils, HashedStorage};
+    use tokio::runtime::Handle;
+
+    #[tokio::test]
+    async fn random_async_root() {
+        let manager = TaskManager::new(Handle::current());
+        let task_executor = Arc::new(manager.executor());
+
+        let factory = create_test_provider_factory();
+        let consistent_view = ConsistentDbView::new(factory.clone());
+
+        let mut rng = rand::thread_rng();
+        let mut state = (0..100)
+            .map(|_| {
+                let address = Address::random();
+                let account =
+                    Account { balance: U256::from(rng.gen::<u64>()), ..Default::default() };
+                let mut storage = HashMap::<B256, U256>::default();
+                let has_storage = rng.gen_bool(0.7);
+                if has_storage {
+                    for _ in 0..100 {
+                        storage.insert(
+                            B256::from(U256::from(rng.gen::<u64>())),
+                            U256::from(rng.gen::<u64>()),
+                        );
+                    }
+                }
+                (address, (account, storage))
+            })
+            .collect::<HashMap<_, _>>();
+
+        {
+            let provider_rw = factory.provider_rw().unwrap();
+            provider_rw
+                .insert_account_for_hashing(
+                    state.iter().map(|(address, (account, _))| (*address, Some(*account))),
+                )
+                .unwrap();
+            provider_rw
+                .insert_storage_for_hashing(state.iter().map(|(address, (_, storage))| {
+                    (
+                        *address,
+                        storage
+                            .iter()
+                            .map(|(slot, value)| StorageEntry { key: *slot, value: *value }),
+                    )
+                }))
+                .unwrap();
+            provider_rw.commit().unwrap();
+        }
+
+        assert_eq!(
+            AsyncStateRoot::new(
+                consistent_view.clone(),
+                task_executor.clone(),
+                HashedPostState::default()
+            )
+            .incremental_root()
+            .await
+            .unwrap(),
+            test_utils::state_root(state.clone())
+        );
+
+        let mut hashed_state = HashedPostState::default();
+        for (address, (account, storage)) in state.iter_mut() {
+            let hashed_address = keccak256(address);
+
+            let should_update_account = rng.gen_bool(0.5);
+            if should_update_account {
+                *account = Account { balance: U256::from(rng.gen::<u64>()), ..*account };
+                hashed_state.accounts.insert(hashed_address, Some(*account));
+            }
+
+            let should_update_storage = rng.gen_bool(0.3);
+            if should_update_storage {
+                for (slot, value) in storage.iter_mut() {
+                    let hashed_slot = keccak256(slot);
+                    *value = U256::from(rng.gen::<u64>());
+                    hashed_state
+                        .storages
+                        .entry(hashed_address)
+                        .or_insert_with(|| HashedStorage::new(false))
+                        .storage
+                        .insert(hashed_slot, *value);
+                }
+            }
+        }
+
+        assert_eq!(
+            AsyncStateRoot::new(consistent_view.clone(), task_executor.clone(), hashed_state)
+                .incremental_root()
+                .await
+                .unwrap(),
+            test_utils::state_root(state)
+        );
+    }
+}

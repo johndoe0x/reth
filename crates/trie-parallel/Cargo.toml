@@ -34,9 +34,9 @@ derive_more.workspace = true
 [dev-dependencies]
 # reth
 reth-primitives = { workspace = true, features = ["test-utils", "arbitrary"] }
-reth-db = { workspace = true, features = ["test-utils"] }
 reth-provider = { workspace = true, features = ["test-utils"] }
+reth-trie = { workspace = true, features = ["test-utils"] }
 
 # misc
-proptest.workspace = true
+rand.workspace = true
 tokio = { workspace = true, default-features = false, features = ["sync", "rt", "macros"] }
