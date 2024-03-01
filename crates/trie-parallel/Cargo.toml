@@ -14,7 +14,6 @@ workspace = true
 [dependencies]
 # reth
 reth-primitives.workspace = true
-reth-interfaces.workspace = true
 reth-db.workspace = true
 reth-trie.workspace = true
 reth-provider.workspace = true
@@ -22,7 +21,6 @@ reth-tasks.workspace = true
 
 # alloy
 alloy-rlp.workspace = true
-alloy-chains.workspace = true
 
 # tracing
 tracing.workspace = true
@@ -32,7 +30,6 @@ tokio = { workspace = true, default-features = false, features = ["sync"] }
 rayon.workspace = true
 thiserror.workspace = true
 derive_more.workspace = true
-auto_impl = "1"
 
 [dev-dependencies]
 # reth
@@ -43,8 +40,3 @@ reth-provider = { workspace = true, features = ["test-utils"] }
 # misc
 proptest.workspace = true
 tokio = { workspace = true, default-features = false, features = ["sync", "rt", "macros"] }
-tokio-stream.workspace = true
-once_cell.workspace = true
-serde_json.workspace = true
-similar-asserts.workspace = true
-criterion.workspace = true
