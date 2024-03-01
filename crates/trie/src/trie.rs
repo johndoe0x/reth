@@ -200,30 +200,31 @@ where
         trace!(target: "trie::loader", "calculating state root");
         let mut trie_updates = TrieUpdates::default();
 
-        let hashed_account_cursor = self.hashed_cursor_factory.hashed_account_cursor()?;
         let trie_cursor = self.trie_cursor_factory.account_trie_cursor()?;
 
         let (mut hash_builder, mut account_node_iter) = match self.previous_state {
             Some(state) => {
+                let hash_builder = state.hash_builder.with_updates(retain_updates);
                 let walker = TrieWalker::from_stack(
                     trie_cursor,
                     state.walker_stack,
                     self.prefix_sets.account_prefix_set,
-                );
-                (
-                    state.hash_builder,
-                    AccountNodeIter::new(walker, hashed_account_cursor)
-                        .with_last_account_key(state.last_account_key),
                 )
+                .with_updates(retain_updates);
+                let node_iter =
+                    AccountNodeIter::from_factory(walker, self.hashed_cursor_factory.clone())?
+                        .with_last_account_key(state.last_account_key);
+                (hash_builder, node_iter)
             }
             None => {
-                let walker = TrieWalker::new(trie_cursor, self.prefix_sets.account_prefix_set);
-                (HashBuilder::default(), AccountNodeIter::new(walker, hashed_account_cursor))
+                let hash_builder = HashBuilder::default().with_updates(retain_updates);
+                let walker = TrieWalker::new(trie_cursor, self.prefix_sets.account_prefix_set)
+                    .with_updates(retain_updates);
+                let node_iter =
+                    AccountNodeIter::from_factory(walker, self.hashed_cursor_factory.clone())?;
+                (hash_builder, node_iter)
             }
         };
-
-        account_node_iter.walker.set_updates(retain_updates);
-        hash_builder.set_updates(retain_updates);
 
         let mut account_rlp = Vec::with_capacity(128);
         let mut hashed_entries_walked = 0;
@@ -265,11 +266,9 @@ where
                         storage_root_calculator.root()?
                     };
 
-                    let account = TrieAccount::from((account, storage_root));
-
                     account_rlp.clear();
+                    let account = TrieAccount::from((account, storage_root));
                     account.encode(&mut account_rlp as &mut dyn BufMut);
-
                     hash_builder.add_leaf(Nibbles::unpack(hashed_address), &account_rlp);
 
                     // Decide if we need to return intermediate progress.
@@ -301,13 +300,10 @@ where
 
         let root = hash_builder.root();
 
-        let (_, walker_updates) = account_node_iter.walker.split();
-        let (_, hash_builder_updates) = hash_builder.split();
-
-        trie_updates.extend(walker_updates);
-        trie_updates.extend_with_account_updates(hash_builder_updates);
-        trie_updates.extend_with_deletes(
-            self.prefix_sets.destroyed_accounts.into_iter().map(TrieKey::StorageTrie),
+        trie_updates.finalize_state_updates(
+            account_node_iter.walker,
+            hash_builder,
+            self.prefix_sets.destroyed_accounts,
         );
 
         Ok(StateRootProgress::Complete(root, hashed_entries_walked, trie_updates))
@@ -410,7 +406,13 @@ where
         Ok(root)
     }
 
-    fn calculate(
+    /// Walks the hashed storage table entries for a given address and calculates the storage root.
+    ///
+    /// # Returns
+    ///
+    /// The storage root, number of walked entries and trie updates
+    /// for a given address if requested.
+    pub fn calculate(
         self,
         retain_updates: bool,
     ) -> Result<(B256, usize, TrieUpdates), StorageRootError> {
@@ -451,12 +453,12 @@ where
 
         let root = hash_builder.root();
 
-        let (_, hash_builder_updates) = hash_builder.split();
-        let (_, walker_updates) = storage_node_iter.walker.split();
-
         let mut trie_updates = TrieUpdates::default();
-        trie_updates.extend(walker_updates);
-        trie_updates.extend_with_storage_updates(self.hashed_address, hash_builder_updates);
+        trie_updates.finalize_storage_updates(
+            self.hashed_address,
+            storage_node_iter.walker,
+            hash_builder,
+        );
 
         trace!(target: "trie::storage_root", ?root, hashed_address = ?self.hashed_address, "calculated storage root");
         Ok((root, storage_slots_walked, trie_updates))

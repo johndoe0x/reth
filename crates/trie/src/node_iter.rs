@@ -1,5 +1,5 @@
 use crate::{
-    hashed_cursor::{HashedAccountCursor, HashedStorageCursor},
+    hashed_cursor::{HashedAccountCursor, HashedCursorFactory, HashedStorageCursor},
     trie_cursor::TrieCursor,
     walker::TrieWalker,
 };
@@ -69,6 +69,14 @@ impl<C, H> AccountNodeIter<C, H> {
             current_hashed_entry: None,
             current_walker_key_checked: false,
         }
+    }
+
+    /// Create new `AccountNodeIter` by creating hashed account cursor from factory.
+    pub fn from_factory<F: HashedCursorFactory<AccountCursor = H>>(
+        walker: TrieWalker<C>,
+        factory: F,
+    ) -> Result<Self, DatabaseError> {
+        Ok(Self::new(walker, factory.hashed_account_cursor()?))
     }
 
     /// Sets the last iterated account key and returns the modified `AccountNodeIter`.

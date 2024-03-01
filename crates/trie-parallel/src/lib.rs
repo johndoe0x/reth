@@ -7,6 +7,9 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
+mod storage_root_targets;
+pub(crate) use storage_root_targets::StorageRootTargets;
+
 mod async_root;
 pub use async_root::*;
 
