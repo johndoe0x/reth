@@ -30,10 +30,6 @@ use tracing::*;
 /// nodes in the process. Upon encountering a leaf node, it will poll the storage root
 /// task for the corresponding hashed address.
 ///
-/// The calculator starts off by pre-computing storage roots of changed
-/// accounts in parallel. Once that's done, it proceeds to walking the state
-/// trie retrieving the pre-computed storage roots when needed.
-///
 /// Internally, the calculator uses [ConsistentDbView] since
 /// it needs to rely on database state saying the same until
 /// the last transaction is open.
