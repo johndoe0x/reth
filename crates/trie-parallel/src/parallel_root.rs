@@ -22,6 +22,18 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tracing::*;
 
+/// Parallel incremental state root calculator.
+///
+/// The calculator starts off by pre-computing storage roots of changed
+/// accounts in parallel. Once that's done, it proceeds to walking the state
+/// trie retrieving the pre-computed storage roots when needed.
+///
+/// Internally, the calculator uses [ConsistentDbView] since
+/// it needs to rely on database state saying the same until
+/// the last transaction is open.
+/// See docs of using [ConsistentDbView] for caveats.
+///
+/// If possible, use more optimized [AsyncStateRoot](crate::AsyncStateRoot) instead.
 #[derive(Debug)]
 pub struct ParallelStateRoot<DB, Provider> {
     /// Consistent view of the database.
@@ -59,8 +71,10 @@ where
         retain_updates: bool,
     ) -> Result<(B256, TrieUpdates), ParallelStateRootError> {
         let prefix_sets = self.hashed_state.construct_prefix_sets();
-        let storage_root_targets =
-            StorageRootTargets::new(&self.hashed_state, prefix_sets.storage_prefix_sets);
+        let storage_root_targets = StorageRootTargets::new(
+            self.hashed_state.accounts.keys().copied(),
+            prefix_sets.storage_prefix_sets,
+        );
         let hashed_state_sorted = self.hashed_state.into_sorted();
 
         // Pre-calculate storage roots in parallel for accounts which were changed.

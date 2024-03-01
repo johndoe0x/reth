@@ -1,7 +1,7 @@
 use derive_more::{Deref, DerefMut};
 use rayon::iter::IntoParallelIterator;
 use reth_primitives::B256;
-use reth_trie::{prefix_set::PrefixSet, HashedPostState};
+use reth_trie::prefix_set::PrefixSet;
 use std::collections::HashMap;
 
 #[derive(Deref, DerefMut, Debug)]
@@ -14,12 +14,16 @@ impl StorageRootTargets {
     /// NOTE: Since updated accounts and prefix sets always overlap,
     /// it's important that iterator over storage prefix sets takes precedence.
     pub(crate) fn new(
-        hashed_state: &HashedPostState,
-        storage_prefix_sets: HashMap<B256, PrefixSet>,
+        changed_accounts: impl IntoIterator<Item = B256>,
+        storage_prefix_sets: impl IntoIterator<Item = (B256, PrefixSet)>,
     ) -> Self {
-        let account_targets =
-            hashed_state.accounts.keys().map(|address| (*address, PrefixSet::default()));
-        Self(account_targets.chain(storage_prefix_sets).collect())
+        Self(
+            changed_accounts
+                .into_iter()
+                .map(|address| (address, PrefixSet::default()))
+                .chain(storage_prefix_sets)
+                .collect(),
+        )
     }
 }
 

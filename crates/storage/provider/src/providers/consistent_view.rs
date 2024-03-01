@@ -16,6 +16,11 @@ pub use reth_interfaces::provider::ConsistentViewError;
 ///
 /// The view should only be used outside of staged-sync.
 /// Otherwise, any attempt to create a provider will result in [ConsistentViewError::Syncing].
+///
+/// When using the view, the consumer should either
+/// 1) have a failover for when the state changes and handle [ConsistentViewError::Inconsistent]
+///    appropriately.
+/// 2) be sure that the state does not change.
 #[derive(Clone, Debug)]
 pub struct ConsistentDbView<DB, Provider> {
     database: PhantomData<DB>,
@@ -58,7 +63,7 @@ where
 
         let tip = last_entry.map(|(_, hash)| hash);
         if self.tip != tip {
-            return Err(ConsistentViewError::InconsistentView {
+            return Err(ConsistentViewError::Inconsistent {
                 tip: GotExpected { got: tip, expected: self.tip },
             })
         }
