@@ -35,7 +35,7 @@ use tracing::*;
 /// the last transaction is open.
 /// See docs of using [ConsistentDbView] for caveats.
 ///
-/// For sync usage, take a look at [ParallelStateRoot](crate::ParallelStateRoot).
+/// For sync usage, take a look at `ParallelStateRoot`.
 #[derive(Debug)]
 pub struct AsyncStateRoot<DB, Provider> {
     /// Consistent view of the database.
