@@ -9,7 +9,7 @@ use reth_provider::{
     providers::{ConsistentDbView, ConsistentViewError},
     DatabaseProviderFactory, ProviderError,
 };
-use reth_tasks::TaskSpawner;
+use reth_tasks::pool::BlockingTaskPool;
 use reth_trie::{
     hashed_cursor::HashedPostStateCursorFactory,
     node_iter::{AccountNode, AccountNodeIter},
@@ -20,7 +20,6 @@ use reth_trie::{
 };
 use std::{collections::HashMap, sync::Arc};
 use thiserror::Error;
-use tokio::sync::oneshot;
 use tracing::*;
 
 /// Async state root calculator.
@@ -40,8 +39,8 @@ use tracing::*;
 pub struct AsyncStateRoot<DB, Provider> {
     /// Consistent view of the database.
     view: ConsistentDbView<DB, Provider>,
-    /// Task spawner.
-    task_spawner: Arc<dyn TaskSpawner>,
+    /// Blocking task pool.
+    blocking_pool: BlockingTaskPool,
     /// Changed hashed state.
     hashed_state: HashedPostState,
 }
@@ -50,17 +49,17 @@ impl<DB, Provider> AsyncStateRoot<DB, Provider> {
     /// Create new async state root calculator.
     pub fn new(
         view: ConsistentDbView<DB, Provider>,
-        task_spawner: Arc<dyn TaskSpawner>,
+        blocking_pool: BlockingTaskPool,
         hashed_state: HashedPostState,
     ) -> Self {
-        Self { view, task_spawner, hashed_state }
+        Self { view, blocking_pool, hashed_state }
     }
 }
 
 impl<DB, Provider> AsyncStateRoot<DB, Provider>
 where
     DB: Database + Clone + 'static,
-    Provider: DatabaseProviderFactory<DB> + Clone + Send + 'static,
+    Provider: DatabaseProviderFactory<DB> + Clone + Send + Sync + 'static,
 {
     /// Calculate incremental state root asynchronously.
     pub async fn incremental_root(self) -> Result<B256, AsyncStateRootError> {
@@ -90,30 +89,19 @@ where
 
         let mut storage_roots = HashMap::with_capacity(storage_root_targets.len());
         for (hashed_address, prefix_set) in storage_root_targets {
-            let (tx, rx) = oneshot::channel();
             let view = self.view.clone();
             let hashed_state_sorted = hashed_state_sorted.clone();
-            self.task_spawner.spawn(Box::pin(async move {
-                let result = view
-                    .provider_ro()
-                    .map_err(AsyncStateRootError::ConsistentView)
-                    .and_then(|provider_ro| {
-                        StorageRoot::new_hashed(
-                            provider_ro.tx_ref(),
-                            HashedPostStateCursorFactory::new(
-                                provider_ro.tx_ref(),
-                                &hashed_state_sorted,
-                            ),
-                            hashed_address,
-                        )
-                        .with_prefix_set(prefix_set)
-                        .calculate(retain_updates)
-                        .map_err(AsyncStateRootError::StorageRoot)
-                    });
-
-                let _ = tx.send(result);
-            }));
-            storage_roots.insert(hashed_address, rx);
+            let handle = self.blocking_pool.spawn(move || -> Result<_, AsyncStateRootError> {
+                let provider = view.provider_ro()?;
+                Ok(StorageRoot::new_hashed(
+                    provider.tx_ref(),
+                    HashedPostStateCursorFactory::new(provider.tx_ref(), &hashed_state_sorted),
+                    hashed_address,
+                )
+                .with_prefix_set(prefix_set)
+                .calculate(retain_updates)?)
+            });
+            storage_roots.insert(hashed_address, handle);
         }
 
         trace!(target: "trie::async_state_root", "calculating state root");
@@ -201,16 +189,14 @@ pub enum AsyncStateRootError {
 mod tests {
     use super::*;
     use rand::Rng;
+    use rayon::ThreadPoolBuilder;
     use reth_primitives::{keccak256, Account, Address, StorageEntry, U256};
     use reth_provider::{test_utils::create_test_provider_factory, HashingWriter};
-    use reth_tasks::TaskManager;
     use reth_trie::{test_utils, HashedStorage};
-    use tokio::runtime::Handle;
 
     #[tokio::test]
     async fn random_async_root() {
-        let manager = TaskManager::new(Handle::current());
-        let task_executor = Arc::new(manager.executor());
+        let blocking_pool = BlockingTaskPool::new(ThreadPoolBuilder::default().build().unwrap());
 
         let factory = create_test_provider_factory();
         let consistent_view = ConsistentDbView::new(factory.clone());
@@ -258,7 +244,7 @@ mod tests {
         assert_eq!(
             AsyncStateRoot::new(
                 consistent_view.clone(),
-                task_executor.clone(),
+                blocking_pool.clone(),
                 HashedPostState::default()
             )
             .incremental_root()
@@ -293,7 +279,7 @@ mod tests {
         }
 
         assert_eq!(
-            AsyncStateRoot::new(consistent_view.clone(), task_executor.clone(), hashed_state)
+            AsyncStateRoot::new(consistent_view.clone(), blocking_pool.clone(), hashed_state)
                 .incremental_root()
                 .await
                 .unwrap(),

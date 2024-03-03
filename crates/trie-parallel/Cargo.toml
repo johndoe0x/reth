@@ -44,9 +44,8 @@ reth-trie = { workspace = true, features = ["test-utils"] }
 # misc
 rand.workspace = true
 tokio = { workspace = true, default-features = false, features = ["sync", "rt", "macros"] }
+rayon.workspace = true
 
 [features]
-default = []
-
-async = ["reth-tasks", "tokio/sync"]
+async = ["reth-tasks/rayon", "tokio/sync"]
 parallel = ["rayon"]
