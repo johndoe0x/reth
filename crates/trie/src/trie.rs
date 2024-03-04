@@ -468,8 +468,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{
-        state_root, state_root_prehashed, storage_root, storage_root_prehashed,
+    use crate::{
+        prefix_set::PrefixSetMut,
+        test_utils::{state_root, state_root_prehashed, storage_root, storage_root_prehashed},
     };
     use proptest::{prelude::ProptestConfig, proptest};
     use reth_db::{
