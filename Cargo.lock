@@ -7032,6 +7032,7 @@ version = "0.1.0-alpha.21"
 dependencies = [
  "alloy-rlp",
  "derive_more",
+ "itertools 0.12.1",
  "rand 0.8.5",
  "rayon",
  "reth-db",

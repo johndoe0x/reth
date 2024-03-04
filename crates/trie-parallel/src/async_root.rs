@@ -1,5 +1,6 @@
 use crate::storage_root_targets::StorageRootTargets;
 use alloy_rlp::{BufMut, Encodable};
+use itertools::Itertools;
 use reth_db::database::Database;
 use reth_primitives::{
     trie::{HashBuilder, Nibbles, TrieAccount},
@@ -88,19 +89,22 @@ where
         debug!(target: "trie::async_state_root", len = storage_root_targets.len(), "pre-calculating storage roots");
 
         let mut storage_roots = HashMap::with_capacity(storage_root_targets.len());
-        for (hashed_address, prefix_set) in storage_root_targets {
+        for (hashed_address, prefix_set) in
+            storage_root_targets.into_iter().sorted_unstable_by_key(|(address, _)| *address)
+        {
             let view = self.view.clone();
             let hashed_state_sorted = hashed_state_sorted.clone();
-            let handle = self.blocking_pool.spawn(move || -> Result<_, AsyncStateRootError> {
-                let provider = view.provider_ro()?;
-                Ok(StorageRoot::new_hashed(
-                    provider.tx_ref(),
-                    HashedPostStateCursorFactory::new(provider.tx_ref(), &hashed_state_sorted),
-                    hashed_address,
-                )
-                .with_prefix_set(prefix_set)
-                .calculate(retain_updates)?)
-            });
+            let handle =
+                self.blocking_pool.spawn_fifo(move || -> Result<_, AsyncStateRootError> {
+                    let provider = view.provider_ro()?;
+                    Ok(StorageRoot::new_hashed(
+                        provider.tx_ref(),
+                        HashedPostStateCursorFactory::new(provider.tx_ref(), &hashed_state_sorted),
+                        hashed_address,
+                    )
+                    .with_prefix_set(prefix_set)
+                    .calculate(retain_updates)?)
+                });
             storage_roots.insert(hashed_address, handle);
         }
 

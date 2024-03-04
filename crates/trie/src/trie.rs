@@ -1,7 +1,7 @@
 use crate::{
     hashed_cursor::{HashedCursorFactory, HashedStorageCursor},
     node_iter::{AccountNode, AccountNodeIter, StorageNode, StorageNodeIter},
-    prefix_set::{PrefixSet, PrefixSetLoader, PrefixSetMut, TriePrefixSets},
+    prefix_set::{PrefixSet, PrefixSetLoader, TriePrefixSets},
     progress::{IntermediateStateRootState, StateRootProgress},
     trie_cursor::TrieCursorFactory,
     updates::{TrieKey, TrieOp, TrieUpdates},
@@ -339,7 +339,7 @@ impl<T, H> StorageRoot<T, H> {
             trie_cursor_factory,
             hashed_cursor_factory,
             hashed_address,
-            prefix_set: PrefixSetMut::default().freeze(),
+            prefix_set: PrefixSet::default(),
         }
     }
 
