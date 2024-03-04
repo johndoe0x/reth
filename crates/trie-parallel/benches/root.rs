@@ -102,7 +102,13 @@ fn generate_test_data(size: usize) -> (HashedPostState, HashedPostState) {
             let slots = storage.keys().cloned().collect::<Vec<_>>();
             let slots_to_update =
                 subsequence(slots, storage_size / 2).new_tree(&mut runner).unwrap().current();
-            (address, slots_to_update.into_iter().map(|slot| (slot, U256::from(1)))) // TODO:
+            (
+                address,
+                slots_to_update
+                    .into_iter()
+                    .map(|slot| (slot, any::<U256>().new_tree(&mut runner).unwrap().current()))
+                    .collect::<HashMap<_, _>>(),
+            )
         })
         .collect::<HashMap<_, _>>();
 
