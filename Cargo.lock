@@ -7031,8 +7031,10 @@ name = "reth-trie-parallel"
 version = "0.1.0-alpha.21"
 dependencies = [
  "alloy-rlp",
+ "criterion",
  "derive_more",
  "itertools 0.12.1",
+ "proptest",
  "rand 0.8.5",
  "rayon",
  "reth-db",

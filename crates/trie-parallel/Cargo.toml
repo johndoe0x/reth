@@ -46,7 +46,14 @@ reth-trie = { workspace = true, features = ["test-utils"] }
 rand.workspace = true
 tokio = { workspace = true, default-features = false, features = ["sync", "rt", "macros"] }
 rayon.workspace = true
+criterion = { workspace = true, features = ["async_tokio"] }
+proptest.workspace = true
 
 [features]
 async = ["reth-tasks/rayon", "tokio/sync", "itertools"]
 parallel = ["rayon"]
+
+[[bench]]
+name = "root"
+required-features = ["async", "parallel"]
+harness = false
