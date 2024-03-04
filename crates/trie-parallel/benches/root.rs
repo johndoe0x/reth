@@ -27,6 +27,9 @@ pub fn calculate_state_root(c: &mut Criterion) {
         {
             let provider_rw = provider_factory.provider_rw().unwrap();
             HashedStateChanges(db_state).write_to_db(provider_rw.tx_ref()).unwrap();
+            let (_, updates) =
+                StateRoot::from_tx(provider_rw.tx_ref()).root_with_updates().unwrap();
+            updates.flush(provider_rw.tx_ref()).unwrap();
             provider_rw.commit().unwrap();
         }
 
